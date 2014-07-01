@@ -71,11 +71,15 @@ public class MultiLayerPerceptron implements IClassifier, IRegressor{
 	private HashMap<Integer,HashMap<Neuron,Integer>> hiddenIndex;
 	private ActivationFunctions functions;
 	private Object[] classes;
+	public MultiLayerPerceptron(int input, int hidden, Object[] tClasses, int numberOfHiddenLayers, double learningrate){
+		this(input,hidden,tClasses.length,numberOfHiddenLayers,learningrate,MultiLayerPerceptron.STANDARD_FUNCTIONS);
+		this.classes = tClasses;
+	}
+	
 	public MultiLayerPerceptron(int input, int hidden, Object[] tClasses, int numberOfHiddenLayers, double learningrate, ActivationFunctions functions){
 		this(input,hidden,tClasses.length,numberOfHiddenLayers,learningrate,functions);
 		this.classes = tClasses;
 	}
-	
 	
 	public MultiLayerPerceptron(int input, int hidden, int output, int numberOfHiddenLayers, double learningrate, ActivationFunctions functions){
 		this.hiddenIndex = new HashMap<Integer,HashMap<Neuron,Integer>>();
@@ -453,6 +457,22 @@ public class MultiLayerPerceptron implements IClassifier, IRegressor{
 		}
 		return r[0];
 	}
+	
+	private static ActivationFunctions STANDARD_FUNCTIONS = new ActivationFunctions(){
+		@Override
+		public double activation(double a) {
+			return a/(1+Math.abs(a));
+		}
+		@Override
+		public double sigmoid(double d) { //Applied to output neurons to map into wanted space.
+			return d;
+		}
+		@Override
+		public double derivative(double a) {
+			double n = (1+Math.abs(a));
+			return 1/(n*n);
+		}
+	};
 	
 	public static AcceptanceCriteria andAcceptanceCriteria(final AcceptanceCriteria ... criterions){
 		return new AcceptanceCriteria(){
