@@ -17,17 +17,13 @@ import nu.thiele.mllib.utils.Statistics;
 import nu.thiele.mllib.utils.Testing;
 
 /**
- * Implements backpropagation as described in:
- * http://www4.rgu.ac.uk/files/chapter3%20-%20bp.pdf
  * @author Andreas Thiele
  */
 public class MultiLayerPerceptron implements IClassifier, IRegressor{
 	/**
-	 * Example of the network solving the XOR-problem
-	 * @throws UnsupportedEncodingException 
-	 * @throws FileNotFoundException 
+	 * Example of the network solving the XOR-problem  
 	 */
-	public static void main(String[] args) throws FileNotFoundException, UnsupportedEncodingException{
+	public static void main(String[] args){
 		ActivationFunctions functions = new ActivationFunctions(){
 			@Override
 			public double activation(double a) {
