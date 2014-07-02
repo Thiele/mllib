@@ -25,6 +25,7 @@ public class Utils {
 			for(Object o : map.keySet()){
 				map.put(o, map.get(o)-lowest);
 			}
+			total = total-lowest*map.keySet().size();
 		}
 		for(Object o : map.keySet()){
 			map.put(o, map.get(o)/total);
