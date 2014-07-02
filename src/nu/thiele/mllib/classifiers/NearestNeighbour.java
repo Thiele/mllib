@@ -1,7 +1,8 @@
 package nu.thiele.mllib.classifiers;
 
+import java.util.Collections;
 import java.util.HashMap;
-import java.util.Iterator;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
@@ -39,9 +40,8 @@ public class NearestNeighbour implements IClassifier{
 		DataEntry[] retur = new DataEntry[k];
 		double fjernest = Double.MIN_VALUE;
 		int index = 0;
-		Iterator<DataEntry> iterator = dataSet.iterator();
-		for(int i = 0; iterator.hasNext(); i++){
-			DataEntry tse = iterator.next();
+		int i = 0;
+		for(DataEntry tse : dataSet){
 			double distance = distance(x,tse.getX());
 			if(i < retur.length){ //Hvis ikke fyldt
 				if(retur[i] == null){
@@ -68,6 +68,7 @@ public class NearestNeighbour implements IClassifier{
 					index = ind;
 				}
 			}
+			i++;
 		}
 		return retur;
 	}
@@ -100,14 +101,19 @@ public class NearestNeighbour implements IClassifier{
 		//Find right choice
 		Object o = null;
 		double max = 0;
+		HashMap<String,Object> toStringMap = new HashMap<String,Object>();
 		for(Object ob : classcount.keySet()){
+			toStringMap.put(ob.toString(), ob);
 			if(classcount.get(ob) > max){
 				max = classcount.get(ob);
 				o = ob;
 			}
 		}
-
-		return o;
+		LinkedList<String> stringRepList = new LinkedList<String>(toStringMap.keySet());
+		Collections.sort(stringRepList);
+		if(stringRepList.size() == 0) return o;
+		//Return first to make it deterministic. Should perhaps be random choice instead
+		return toStringMap.get(stringRepList.get(0));
 	}
 	
 	private double getWeight(double input){
