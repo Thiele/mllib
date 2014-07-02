@@ -35,11 +35,11 @@ public class NearestNeighbour implements IClassifier{
 		this.dataSet = dataSet;
 	}
 	
-	private DataEntry[] getNearestNeighbourType(double[] x){
-		DataEntry[] retur = new DataEntry[this.k];
+	public static DataEntry[] getKNearestNeighbours(List<DataEntry> dataSet, double[] x, int k){
+		DataEntry[] retur = new DataEntry[k];
 		double fjernest = Double.MIN_VALUE;
 		int index = 0;
-		Iterator<DataEntry> iterator = this.dataSet.iterator();
+		Iterator<DataEntry> iterator = dataSet.iterator();
 		for(int i = 0; iterator.hasNext(); i++){
 			DataEntry tse = iterator.next();
 			double distance = distance(x,tse.getX());
@@ -70,6 +70,10 @@ public class NearestNeighbour implements IClassifier{
 			}
 		}
 		return retur;
+	}
+	
+	private DataEntry[] getNearestNeighbourType(double[] x){
+		return NearestNeighbour.getKNearestNeighbours(this.dataSet, x, this.k);
 	}
 	
 	/**

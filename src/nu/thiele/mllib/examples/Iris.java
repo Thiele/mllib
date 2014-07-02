@@ -2,11 +2,16 @@ package nu.thiele.mllib.examples;
 
 import java.util.LinkedList;
 import java.util.List;
+
 import nu.thiele.mllib.classifiers.IClassifier;
 import nu.thiele.mllib.classifiers.LinearDiscriminantAnalysis;
 import nu.thiele.mllib.classifiers.NaiveBayes;
 import nu.thiele.mllib.classifiers.NearestNeighbour;
 import nu.thiele.mllib.data.Data.DataEntry;
+import nu.thiele.mllib.filters.FilterHandler;
+import nu.thiele.mllib.filters.IFilter;
+import nu.thiele.mllib.filters.NearestNeighbourFilter;
+import nu.thiele.mllib.filters.NormalDistributionFilter;
 import nu.thiele.mllib.utils.Testing;
 import nu.thiele.mllib.utils.Testing.ClassifierResults;
 
@@ -49,6 +54,22 @@ public class Iris {
 	    System.out.println("Nearest neighbour results: "+nnR);
 	    System.out.println();
 	    System.out.println("Performing cross validation");
+	    ldaR = Testing.crossValidation(lda, dataset, 10);
+	    nbR = Testing.crossValidation(nb, dataset, 10);
+	    nnR = Testing.crossValidation(nn, dataset, 10);
+	    System.out.println("Linear discriminant analysis results: "+ldaR);
+	    System.out.println("Naive Bayes results: "+nbR);
+	    System.out.println("Nearest neighbour results: "+nnR);
+	    
+	    //Apply pre-processing filter to remove noise
+	    System.out.println();
+	    System.out.println("Applying filters to remove noise");
+	    NearestNeighbourFilter nnf = new NearestNeighbourFilter(10, 2); //Remove entries that has at most 2 neighbours of same class in nearest 10
+	    NormalDistributionFilter ndf = new NormalDistributionFilter(3.0f); //Remove entries that is more than 3 standard deviations from the class's means for any feature 
+	    IFilter[] filters = {ndf,nnf};
+	    FilterHandler fh = new FilterHandler(FilterHandler.FilterMode.REMOVE_ALL, filters); //Remove all identified outliers
+	    fh.applyFilters(dataset);
+	    System.out.println("Performing cross validation on noise-reduced dataset");
 	    ldaR = Testing.crossValidation(lda, dataset, 10);
 	    nbR = Testing.crossValidation(nb, dataset, 10);
 	    nnR = Testing.crossValidation(nn, dataset, 10);
