@@ -29,7 +29,7 @@ public class NaiveBayes implements IClassifier {
 		this.loadClassifier();
 	}
 	
-	public NaiveBayes(List<DataEntry> set, Estimator estimator) throws Exception{
+	public NaiveBayes(List<DataEntry> set, Estimator estimator) throws InvalidArgumentException{
 		this.init();
 		this.est = estimator;
 		this.setTrainingData(set);
