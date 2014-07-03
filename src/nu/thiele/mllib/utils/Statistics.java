@@ -1,10 +1,19 @@
 package nu.thiele.mllib.utils;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import nu.thiele.mllib.data.Data.DataEntry;
 
 public class Statistics {
+	
+	public static double max(ArrayList<Double> t){
+		double maks = Double.MIN_VALUE;
+		for(double d : t){
+			if(d > maks) maks = d;
+		}
+		return maks;
+	}
 	
 	
 	public static double mean(List<DataEntry> data, int index){
@@ -13,6 +22,34 @@ public class Statistics {
 			retval += entry.getX()[index];
 		}
 		return retval/((float)data.size());
+	}
+	
+	public static double min(ArrayList<Double> t){
+		double min = Double.MAX_VALUE;
+		for(double d : t){
+			if(d < min) min = d;
+		}
+		return min;
+	}
+	
+	public static double normalDistributionProbability(double x, double mean, double var){
+		double exp = (x-mean)*(x-mean)/(2*var);
+		double base = 1.0/(Math.sqrt(2*Math.PI*var));
+		double retur = base*Math.pow(Math.E, -exp);
+		return retur;
+	}
+	
+	public static ArrayList<Double> rescale(ArrayList<Double> t){
+		return rescale(t, min(t), max(t));
+	}
+	
+	public static ArrayList<Double> rescale(ArrayList<Double> t, double min, double maks){
+		maks = maks-min;
+		ArrayList<Double> retur = new ArrayList<Double>();
+		for(double d : t){
+			retur.add((d-min)/maks);
+		}
+		return retur;
 	}
 	
 	public static double standardDeviation(List<DataEntry> data, int index, double mean){

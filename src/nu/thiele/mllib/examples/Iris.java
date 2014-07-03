@@ -2,7 +2,6 @@ package nu.thiele.mllib.examples;
 
 import java.util.LinkedList;
 import java.util.List;
-
 import nu.thiele.mllib.classifiers.IClassifier;
 import nu.thiele.mllib.classifiers.LinearDiscriminantAnalysis;
 import nu.thiele.mllib.classifiers.NaiveBayes;

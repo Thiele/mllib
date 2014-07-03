@@ -8,20 +8,37 @@ import java.util.Map;
 
 import nu.thiele.mllib.data.Data.DataEntry;
 import nu.thiele.mllib.exceptions.InvalidArgumentException;
+import nu.thiele.mllib.kernelestimators.CosineKernelEstimator;
+import nu.thiele.mllib.kernelestimators.EpanechnikovKernelEstimator;
+import nu.thiele.mllib.kernelestimators.GaussianKernelEstimator;
+import nu.thiele.mllib.kernelestimators.HistogramEstimator;
+import nu.thiele.mllib.kernelestimators.IEstimator;
+import nu.thiele.mllib.kernelestimators.IEstimator.Estimator;
+import nu.thiele.mllib.kernelestimators.TriweightKernelEstimator;
 import nu.thiele.mllib.utils.Statistics;
 import nu.thiele.mllib.utils.Utils;
 
 public class NaiveBayes implements IClassifier {
 	private List<DataEntry> data; 
 	private HashMap<Object, Double> classCount;
-	private HashMap<Object, HashMap<Integer,NormalDistributionEstimator>> ke;
+	private HashMap<Object, HashMap<Integer,IEstimator>> ke;
+	private Estimator est;
 	public NaiveBayes(List<DataEntry> set) throws Exception{
-		//Init
-		this.classCount = new HashMap<Object,Double>();
-		this.ke = new HashMap<Object, HashMap<Integer, NormalDistributionEstimator>>();
-		
+		this.init();
 		this.setTrainingData(set);
 		this.loadClassifier();
+	}
+	
+	public NaiveBayes(List<DataEntry> set, Estimator estimator) throws Exception{
+		this.init();
+		this.est = estimator;
+		this.setTrainingData(set);
+		this.loadClassifier();
+	}
+	
+	private void init(){
+		this.classCount = new HashMap<Object,Double>();
+		this.ke = new HashMap<Object, HashMap<Integer, IEstimator>>();
 	}
 	
 	private void addValue(DataEntry t){
@@ -29,9 +46,33 @@ public class NaiveBayes implements IClassifier {
 		else this.classCount.put(t.getY(), this.classCount.get(t.getY())+1.0);
 		
 		for(int i = 0; i < t.getX().length; i++){
-			if(this.ke.get(t.getY()) == null) this.ke.put(t.getY(), new HashMap<Integer, NormalDistributionEstimator> ());
-			NormalDistributionEstimator ketemp = this.ke.get(t.getY()).get(i);
-			if(ketemp == null) ketemp = new NormalDistributionEstimator();
+			if(this.ke.get(t.getY()) == null) this.ke.put(t.getY(), new HashMap<Integer, IEstimator> ());
+			IEstimator ketemp = this.ke.get(t.getY()).get(i);
+			if(ketemp == null){
+				if(this.est == null) ketemp = new NormalDistributionEstimator();
+				else{
+					switch(this.est){
+					case COSINE:
+						ketemp = new CosineKernelEstimator();
+						break;
+					case EPANECHNIKOV:
+						ketemp = new EpanechnikovKernelEstimator();
+						break;
+					case GAUSSIAN:
+						ketemp = new GaussianKernelEstimator();
+						break;
+					case HISTOGRAM:
+						ketemp = new HistogramEstimator();
+						break;
+					case TRIWEIGHT:
+						ketemp = new TriweightKernelEstimator();
+						break;
+					default:
+						ketemp = new NormalDistributionEstimator();
+						break;
+					}
+				}
+			}
 			ketemp.addValue(t.getX()[i]);
 			this.ke.get(t.getY()).put(i, ketemp);
 		}
@@ -102,11 +143,8 @@ public class NaiveBayes implements IClassifier {
 		return probs;
 	}
 	
-	private class NormalDistributionEstimator{
-		private ArrayList<Double> ar;
-		public NormalDistributionEstimator(){
-			ar = new ArrayList<Double>();
-		}
+	private class NormalDistributionEstimator implements IEstimator{
+		private ArrayList<Double> ar =new ArrayList<Double>();
 		
 		public void addValue(double x){
 			this.ar.add(x);
@@ -116,10 +154,7 @@ public class NaiveBayes implements IClassifier {
 		public double probability(double x) {
 			double gennemsnit = Statistics.mean(this.ar);
 			double std = Statistics.standardDeviation(this.ar, gennemsnit);
-			double exp = -(x-gennemsnit)*(x-gennemsnit)/(2*std*std);
-			double base = 1.0/(Math.sqrt(2*Math.PI)*std);
-			double retur = base*Math.pow(Math.E, exp);
-			return retur;
+			return Statistics.normalDistributionProbability(x, gennemsnit, std*std);
 		}
 	}
 }
