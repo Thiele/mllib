@@ -12,8 +12,9 @@ import nu.thiele.mllib.kernelestimators.CosineKernelEstimator;
 import nu.thiele.mllib.kernelestimators.EpanechnikovKernelEstimator;
 import nu.thiele.mllib.kernelestimators.GaussianKernelEstimator;
 import nu.thiele.mllib.kernelestimators.HistogramEstimator;
-import nu.thiele.mllib.kernelestimators.IEstimator;
-import nu.thiele.mllib.kernelestimators.IEstimator.Estimator;
+import nu.thiele.mllib.kernelestimators.KernelEstimator;
+import nu.thiele.mllib.kernelestimators.KernelEstimator.Estimator;
+import nu.thiele.mllib.kernelestimators.NormalDistributionEstimator;
 import nu.thiele.mllib.kernelestimators.TriweightKernelEstimator;
 import nu.thiele.mllib.utils.Statistics;
 import nu.thiele.mllib.utils.Utils;
@@ -21,7 +22,7 @@ import nu.thiele.mllib.utils.Utils;
 public class NaiveBayes implements IClassifier {
 	private List<DataEntry> data; 
 	private HashMap<Object, Double> classCount;
-	private HashMap<Object, HashMap<Integer,IEstimator>> ke;
+	private HashMap<Object, HashMap<Integer,KernelEstimator>> ke;
 	private Estimator est;
 	public NaiveBayes(List<DataEntry> set) throws Exception{
 		this.init();
@@ -38,7 +39,7 @@ public class NaiveBayes implements IClassifier {
 	
 	private void init(){
 		this.classCount = new HashMap<Object,Double>();
-		this.ke = new HashMap<Object, HashMap<Integer, IEstimator>>();
+		this.ke = new HashMap<Object, HashMap<Integer, KernelEstimator>>();
 	}
 	
 	private void addValue(DataEntry t){
@@ -46,8 +47,8 @@ public class NaiveBayes implements IClassifier {
 		else this.classCount.put(t.getY(), this.classCount.get(t.getY())+1.0);
 		
 		for(int i = 0; i < t.getX().length; i++){
-			if(this.ke.get(t.getY()) == null) this.ke.put(t.getY(), new HashMap<Integer, IEstimator> ());
-			IEstimator ketemp = this.ke.get(t.getY()).get(i);
+			if(this.ke.get(t.getY()) == null) this.ke.put(t.getY(), new HashMap<Integer, KernelEstimator> ());
+			KernelEstimator ketemp = this.ke.get(t.getY()).get(i);
 			if(ketemp == null){
 				if(this.est == null) ketemp = new NormalDistributionEstimator();
 				else{
@@ -141,20 +142,5 @@ public class NaiveBayes implements IClassifier {
 		}
 		Utils.percentify(probs);
 		return probs;
-	}
-	
-	private class NormalDistributionEstimator implements IEstimator{
-		private ArrayList<Double> ar =new ArrayList<Double>();
-		
-		public void addValue(double x){
-			this.ar.add(x);
-		}
-		
-
-		public double probability(double x) {
-			double gennemsnit = Statistics.mean(this.ar);
-			double std = Statistics.standardDeviation(this.ar, gennemsnit);
-			return Statistics.normalDistributionProbability(x, gennemsnit, std*std);
-		}
 	}
 }

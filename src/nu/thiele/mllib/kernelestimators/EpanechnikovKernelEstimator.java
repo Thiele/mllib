@@ -4,14 +4,17 @@ import java.util.ArrayList;
 
 import nu.thiele.mllib.utils.Statistics;
 
-public class EpanechnikovKernelEstimator implements IEstimator{
+public class EpanechnikovKernelEstimator extends KernelEstimator{
 	private ArrayList<Double> ar = new ArrayList<Double>();
 	private double sum = 0.0;
-	public void addValue(double x) {
+	
+	@Override
+	protected void addValueToEstimator(double x) {
 		sum = sum+x;
 		this.ar.add(x);
 	}
-	public double probability(double x) {
+	@Override
+	protected double estimatedProbability(double[] parameters, double x) {
 		double v = 0.5;
 		if(x > Statistics.max(this.ar)) return 0.000001;
 		else if(x < Statistics.min(this.ar)) return 0.000001;
@@ -46,5 +49,11 @@ public class EpanechnikovKernelEstimator implements IEstimator{
 			double dat = (input-this.x)/this.h;
 			return (1-dat*dat)*0.75;
 		}
+	}
+
+	@Override
+	protected double[] getEstimatorParametersForEstimation() {
+		// TODO Auto-generated method stub
+		return null;
 	}
 }

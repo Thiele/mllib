@@ -4,23 +4,32 @@ import java.util.ArrayList;
 
 import nu.thiele.mllib.utils.Statistics;
 
-public class GaussianKernelEstimator implements IEstimator{
+public class GaussianKernelEstimator extends KernelEstimator{
 	private ArrayList<Double> ar = new ArrayList<Double>();
 	private double sum = 0.0;
-	public void addValue(double x) {
+	
+	@Override
+	protected void addValueToEstimator(double x) {
 		sum = sum+x;
 		this.ar.add(x);
 	}
-	public double probability(double x) {
-		double n = this.ar.size();
-		double gennemsnit = this.sum/n;
-		double h = Statistics.standardDeviation(ar, gennemsnit)*Math.pow(80/(1.1283791670955125739*n), -1/5);
+	
+	@Override
+	protected double estimatedProbability(double[] parameters, double x) {
+		double h = parameters[1]*Math.pow(80/(1.1283791670955125739*this.ar.size()), -1/5);
 		double total = 0.0;
 		//Beregn kurver
 		for(double d : this.ar){
 			total = total+(new Curve(d, h)).probability(x);
 		}
-		return total/(h*n);
+		return total/(h*this.ar.size());
+	}
+	
+	@Override
+	protected double[] getEstimatorParametersForEstimation() {
+		double avg = this.sum/((double)this.ar.size());
+		double std = Statistics.standardDeviation(this.ar, avg);
+		return new double[]{avg, std};
 	}
 	
 	private class Curve {

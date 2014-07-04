@@ -7,7 +7,7 @@ import java.util.TreeSet;
 
 import nu.thiele.mllib.utils.Statistics;
 
-public class HistogramEstimator implements IEstimator{
+public class HistogramEstimator extends KernelEstimator{
 	private ArrayList<Double> ar;
 	private double total = 0;
 	public HistogramEstimator(){
@@ -15,13 +15,13 @@ public class HistogramEstimator implements IEstimator{
 	}
 	
 	@Override
-	public void addValue(double x) {
+	protected void addValueToEstimator(double x) {
 		this.ar.add(x);
 		this.total = this.total+x;
 	}
 	
 	@Override
-	public double probability(double x) {
+	protected double estimatedProbability(double[] parameters, double x) {
 		double h = 0;
 		double k = 0;
 		//Scott's choice, hvis man får lyst
@@ -73,5 +73,11 @@ public class HistogramEstimator implements IEstimator{
 		}
 		
 		return antal/((double)this.ar.size());
+	}
+
+	@Override
+	protected double[] getEstimatorParametersForEstimation() {
+		// TODO Auto-generated method stub
+		return null;
 	}
 }
