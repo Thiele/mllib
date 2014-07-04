@@ -1,10 +1,12 @@
 package nu.thiele.mllib.classifiers;
 
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.PriorityQueue;
 
 import nu.thiele.mllib.data.Data.DataEntry;
 import nu.thiele.mllib.utils.Utils;
@@ -15,10 +17,7 @@ import nu.thiele.mllib.utils.Utils;
  *
  *
  * An implementation of knn.
- * Uses Euclidean distance weighted by 1/distance
  * 
- * Main method to classify if entry is male or female based on:
- * Height, weight
  */
 public class NearestNeighbour implements IClassifier{
 	private int k;
@@ -36,38 +35,39 @@ public class NearestNeighbour implements IClassifier{
 		this.dataSet = dataSet;
 	}
 	
-	public static DataEntry[] getKNearestNeighbours(List<DataEntry> dataSet, double[] x, int k){
-		DataEntry[] retur = new DataEntry[k];
+	public static DataEntry[] getKNearestNeighbours(List<DataEntry> dataSet, final double[] x, int k){
+		Comparator<DataEntry> distanceComparator = new Comparator<DataEntry>(){
+			@Override
+			public int compare(DataEntry arg0, DataEntry arg1) {
+				double distA = distance(arg0.getX(), x);
+				double distB = distance(arg1.getX(), x);
+				if(distA < distB) return 1;
+				else if(distA == distB) return 0;
+				return -1;
+			}
+		};
+		PriorityQueue<DataEntry> pe = new PriorityQueue<DataEntry>(k, distanceComparator);
 		double fjernest = Double.MIN_VALUE;
-		int index = 0;
 		int i = 0;
 		for(DataEntry tse : dataSet){
-			double distance = distance(x,tse.getX());
-			if(i < retur.length){ //Hvis ikke fyldt
-				if(retur[i] == null){
-					retur[i] = tse;
-					if(distance > fjernest){
-						index = i;
-						fjernest = distance;
-					}
-				}
+			if(i < k){ //Not full
+				pe.add(tse);
+				fjernest = distance(pe.peek().getX(), x);
 			}
 			else{
+				double distance = distance(x,tse.getX());
 				if(distance < fjernest){
-					retur[index] = tse;
-					double f = 0.0f;
-					int ind = 0;
-					for(int j = 0; j < retur.length; j++){
-						double dt = distance(retur[j].getX(),x);
-						if(dt > f){
-							f = dt;
-							ind = j;
-						}
-					}
-					fjernest = f;
-					index = ind;
+					pe.poll();
+					pe.add(tse);
+					fjernest = distance(pe.peek().getX(),x);
 				}
 			}
+			i++;
+		}
+		DataEntry[] retur = new DataEntry[k];
+		i = 0;
+		for(DataEntry d : pe){
+			retur[i] = d;
 			i++;
 		}
 		return retur;
