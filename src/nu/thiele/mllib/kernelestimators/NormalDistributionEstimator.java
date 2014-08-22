@@ -13,15 +13,15 @@ public class NormalDistributionEstimator extends KernelEstimator{
 	}
 	
 	@Override
-	protected double estimatedProbability(double[] parameters, double x) {
-		return Statistics.normalDistributionProbability(x, parameters[0], parameters[1]*parameters[1]);
+	protected double estimatedProbability(Object[] parameters, double x) {
+		return Statistics.normalDistributionProbability(x, (double)parameters[0], ((double)parameters[1])*((double)parameters[1]));
 	}
 
 	@Override
-	protected double[] getEstimatorParametersForEstimation() {
+	protected Object[] getEstimatorParametersForEstimation() {
 		double avg = Statistics.mean(this.ar);
 		double std = Statistics.standardDeviation(this.ar,avg);
-		double[] retval = {avg, std}; //Avg and standard deviation
+		Object[] retval = {avg, std}; //Avg and standard deviation
 		return retval;
 	}
 }

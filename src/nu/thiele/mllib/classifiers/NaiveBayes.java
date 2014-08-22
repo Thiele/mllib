@@ -1,11 +1,9 @@
 package nu.thiele.mllib.classifiers;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-
 import nu.thiele.mllib.data.Data.DataEntry;
 import nu.thiele.mllib.exceptions.InvalidArgumentException;
 import nu.thiele.mllib.kernelestimators.CosineKernelEstimator;

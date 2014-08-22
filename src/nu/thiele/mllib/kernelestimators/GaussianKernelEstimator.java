@@ -15,8 +15,8 @@ public class GaussianKernelEstimator extends KernelEstimator{
 	}
 	
 	@Override
-	protected double estimatedProbability(double[] parameters, double x) {
-		double h = parameters[1]*Math.pow(80/(1.1283791670955125739*this.ar.size()), -1/5);
+	protected double estimatedProbability(Object[] parameters, double x) {
+		double h = ((double)parameters[1])*Math.pow(80/(1.1283791670955125739*this.ar.size()), -1/5);
 		double total = 0.0;
 		//Beregn kurver
 		for(double d : this.ar){
@@ -26,10 +26,10 @@ public class GaussianKernelEstimator extends KernelEstimator{
 	}
 	
 	@Override
-	protected double[] getEstimatorParametersForEstimation() {
+	protected Object[] getEstimatorParametersForEstimation() {
 		double avg = this.sum/((double)this.ar.size());
 		double std = Statistics.standardDeviation(this.ar, avg);
-		return new double[]{avg, std};
+		return new Object[]{avg, std};
 	}
 	
 	private class Curve {

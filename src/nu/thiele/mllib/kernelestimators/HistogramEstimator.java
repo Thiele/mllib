@@ -21,7 +21,7 @@ public class HistogramEstimator extends KernelEstimator{
 	}
 	
 	@Override
-	protected double estimatedProbability(double[] parameters, double x) {
+	protected double estimatedProbability(Object[] parameters, double x) {
 		double h = 0;
 		double k = 0;
 		//Scott's choice, hvis man får lyst
@@ -76,7 +76,7 @@ public class HistogramEstimator extends KernelEstimator{
 	}
 
 	@Override
-	protected double[] getEstimatorParametersForEstimation() {
+	protected Object[] getEstimatorParametersForEstimation() {
 		// TODO Auto-generated method stub
 		return null;
 	}

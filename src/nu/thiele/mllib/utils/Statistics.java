@@ -7,7 +7,7 @@ import nu.thiele.mllib.data.Data.DataEntry;
 
 public class Statistics {
 	
-	public static double max(ArrayList<Double> t){
+	public static double max(List<Double> t){
 		double maks = Double.MIN_VALUE;
 		for(double d : t){
 			if(d > maks) maks = d;
@@ -24,7 +24,7 @@ public class Statistics {
 		return retval/((float)data.size());
 	}
 	
-	public static double min(ArrayList<Double> t){
+	public static double min(List<Double> t){
 		double min = Double.MAX_VALUE;
 		for(double d : t){
 			if(d < min) min = d;
@@ -39,11 +39,11 @@ public class Statistics {
 		return retur;
 	}
 	
-	public static ArrayList<Double> rescale(ArrayList<Double> t){
+	public static List<Double> rescale(List<Double> t){
 		return rescale(t, min(t), max(t));
 	}
 	
-	public static ArrayList<Double> rescale(ArrayList<Double> t, double min, double maks){
+	public static List<Double> rescale(List<Double> t, double min, double maks){
 		maks = maks-min;
 		ArrayList<Double> retur = new ArrayList<Double>();
 		for(double d : t){

@@ -1,6 +1,8 @@
 package nu.thiele.mllib.kernelestimators;
 
 import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.List;
 
 import nu.thiele.mllib.utils.Statistics;
 
@@ -14,12 +16,21 @@ public class EpanechnikovKernelEstimator extends KernelEstimator{
 		this.ar.add(x);
 	}
 	@Override
-	protected double estimatedProbability(double[] parameters, double x) {
+	protected double estimatedProbability(Object[] parameters, double x) {
 		double v = 0.5;
-		if(x > Statistics.max(this.ar)) return 0.000001;
-		else if(x < Statistics.min(this.ar)) return 0.000001;
+		if(x < (double) parameters[0]) return 0.000001;
+		if(x > (double) parameters[1]) return 0.000001;
 		
-		ArrayList<Double> brug = new ArrayList<Double>(this.ar);
+		/*
+		 * Create a copy
+		 */
+		List<Double> brug = new LinkedList<Double>();
+		for(double d : this.ar) brug.add(d);
+		
+		/*
+		 * Rescale it
+		 */
+		
 		brug.add(0, x);
 		brug = Statistics.rescale(brug);
 		v = brug.get(0);
@@ -52,8 +63,9 @@ public class EpanechnikovKernelEstimator extends KernelEstimator{
 	}
 
 	@Override
-	protected double[] getEstimatorParametersForEstimation() {
-		// TODO Auto-generated method stub
-		return null;
+	protected Object[] getEstimatorParametersForEstimation() {
+		double min = Statistics.min(this.ar);
+		double max = Statistics.max(this.ar);
+		return new Object[]{min,max};
 	}
 }

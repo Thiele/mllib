@@ -9,14 +9,14 @@ public abstract class KernelEstimator {
 	 * Abstract ones to implement
 	 */
 	protected abstract void addValueToEstimator(double x);
-	protected abstract double estimatedProbability(double[] parameters, double x);
-	protected abstract double[] getEstimatorParametersForEstimation();
+	protected abstract double estimatedProbability(Object[] parameters, double x);
+	protected abstract Object[] getEstimatorParametersForEstimation();
 	
 	/*
 	 * Internal variables
 	 */
 	private boolean changedSinceLastParameterCalculation = true;
-	private double[] estimatorParameters;
+	private Object[] estimatorParameters;
 	/*
 	 * 
 	 * Methods in this abstraction
