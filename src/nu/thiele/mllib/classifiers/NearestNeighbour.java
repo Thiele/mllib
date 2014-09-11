@@ -74,7 +74,9 @@ public class NearestNeighbour implements IClassifier{
 	}
 	
 	private DataEntry[] getNearestNeighbourType(double[] x){
-		return NearestNeighbour.getKNearestNeighbours(this.dataSet, x, this.k);
+		int n = this.k;
+		if(this.dataSet.size() < this.k) n = this.dataSet.size();
+		return NearestNeighbour.getKNearestNeighbours(this.dataSet, x, n);
 	}
 	
 	/**

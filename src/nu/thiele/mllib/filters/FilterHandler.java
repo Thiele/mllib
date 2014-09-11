@@ -23,21 +23,26 @@ public class FilterHandler {
 		HashSet<DataEntry> toRemove = new HashSet<DataEntry>();
 		boolean firstRun = true;
 		for(IFilter f : this.filters){
-			HashSet<DataEntry> vals = (HashSet<DataEntry>) f.getRemovals(input);
-			if(this.filterMode == FilterMode.REMOVE_ALL) toRemove.addAll(vals);
-			else if(this.filterMode == FilterMode.REMOVE_UNANIMOUS){
-				if(firstRun){
-					toRemove.addAll(vals);
-				}
-				else{
-					HashSet<DataEntry> newSet = new HashSet<DataEntry>();
-					for(DataEntry a : toRemove){
-						if(vals.contains(a)) newSet.add(a);
+			try{
+				HashSet<DataEntry> vals = (HashSet<DataEntry>) f.getRemovals(input);
+				if(this.filterMode == FilterMode.REMOVE_ALL) toRemove.addAll(vals);
+				else if(this.filterMode == FilterMode.REMOVE_UNANIMOUS){
+					if(firstRun){
+						toRemove.addAll(vals);
 					}
-					toRemove = newSet;
+					else{
+						HashSet<DataEntry> newSet = new HashSet<DataEntry>();
+						for(DataEntry a : toRemove){
+							if(vals.contains(a)) newSet.add(a);
+						}
+						toRemove = newSet;
+					}
 				}
+				firstRun = false;
 			}
-			firstRun = false;
+			catch(IllegalArgumentException e){
+				
+			}
 		}
 		input.removeAll(toRemove);
 	}
