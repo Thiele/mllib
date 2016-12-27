@@ -6,7 +6,7 @@ import java.util.List;
 
 import nu.thiele.mllib.utils.Statistics;
 
-public class CosineKernelEstimator extends KernelEstimator{
+public class CosineKernelEstimator extends KernelEstimator implements KernelEstimatorFactory{
 	private ArrayList<Double> ar = new ArrayList<Double>();
 	private double sum = 0.0;
 	
@@ -59,5 +59,9 @@ public class CosineKernelEstimator extends KernelEstimator{
 		double min = Statistics.min(this.ar);
 		double max = Statistics.max(this.ar);
 		return new Object[]{min,max};
+	}
+	@Override
+	public KernelEstimator newInstance() {
+		return new CosineKernelEstimator();
 	}
 }

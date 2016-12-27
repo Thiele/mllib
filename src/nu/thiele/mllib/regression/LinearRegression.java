@@ -2,9 +2,9 @@ package nu.thiele.mllib.regression;
 
 import java.util.List;
 
-import nu.thiele.mllib.data.Data.DataEntry;
 import Jama.Matrix;
 import Jama.QRDecomposition;
+import nu.thiele.mllib.data.Data.DataEntry;
 
 public class LinearRegression implements IRegressor{
 	private double alpha, beta = 1.0; //Beta = 1
@@ -20,7 +20,7 @@ public class LinearRegression implements IRegressor{
 		double[][] matrix = new double[data.size()][data.get(0).getX().length];
 		int k = 0;
 		for(DataEntry d : data){
-			y[k] = Double.valueOf(d.getY().toString());
+			y[k] = d.getY();
 			matrix[k] = d.getX();
 			k++;
 		}
@@ -38,7 +38,7 @@ public class LinearRegression implements IRegressor{
 		double[] t = new double[data.size()];
 		int i = 0;
 		for(DataEntry d : data){
-			t[i] = Double.valueOf(d.getY().toString());
+			t[i] = d.getY();
 			i++;
 		}
 		Matrix yMatrix = new Matrix(new double[][]{t}).transpose();
@@ -61,7 +61,7 @@ public class LinearRegression implements IRegressor{
 		double[][] matrix = new double[data.size()][data.get(0).getX().length];
 		int k = 0;
 		for(DataEntry d : data){
-			y[k] = Double.valueOf(d.getY().toString());
+			y[k] = d.getY();
 			matrix[k] = d.getX();
 			k++;
 		}

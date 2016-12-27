@@ -5,6 +5,7 @@ import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
+
 import nu.thiele.mllib.data.Data.DataEntry;
 import nu.thiele.mllib.utils.Statistics;
 
@@ -20,11 +21,11 @@ public class NormalDistributionFilter implements IFilter{
 		//Check input
 		if(inputlist == null || inputlist.size() == 0) return toRemove;
 		//Start by finding 
-		HashSet<Object> ys = new HashSet<Object>();
+		HashSet<Double> ys = new HashSet<Double>();
 		for(DataEntry d : inputlist){
 			ys.add(d.getY());
 		}
-		for(Object o : ys){
+		for(double o : ys){
 			List<DataEntry> input = new LinkedList<DataEntry>();
 			for(DataEntry tse : inputlist){
 				if(tse.getY() == o) input.add(tse);

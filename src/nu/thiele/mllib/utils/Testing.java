@@ -5,12 +5,16 @@ import java.util.List;
 
 import nu.thiele.mllib.classifiers.IClassifier;
 import nu.thiele.mllib.data.Data.DataEntry;
-import nu.thiele.mllib.exceptions.InvalidArgumentException;
+import nu.thiele.mllib.data.DataSet;
 import nu.thiele.mllib.regression.IRegressor;
 
 
 public class Testing {
-	public static ClassifierResults crossValidation(IClassifier classifier, List<DataEntry> dataset, int folds) throws InvalidArgumentException{
+	public static ClassifierResults crossValidation(IClassifier classifier, DataSet ds, int folds){
+		List<DataEntry> dataset = new LinkedList<DataEntry>();
+		for(int i = 0; i < ds.x.length; i++){
+			dataset.add(new DataEntry(ds.x[i], ds.y[i]));
+		}
 		ClassifierResults retval = new ClassifierResults(0,0);
 		int setsize = dataset.size()/folds;
 		for(int i = 0; i < folds; i++){
@@ -30,11 +34,10 @@ public class Testing {
 				trainingset.addAll(dataset.subList((i+1)*setsize, dataset.size()));
 			}
 			//Prepare classifier
-			classifier.setTrainingData(trainingset);
-			classifier.loadClassifier();
+			classifier.train(ds.x, ds.y);
 			
 			//And calculate
-			ClassifierResults results = Testing.testSet(classifier, testset);
+			ClassifierResults results = Testing.testSet(classifier, Utils.listToDataSet(testset));
 			retval.addCorrectGuesses(results.getCorrectGuesses());
 			retval.addTotalGuesses(results.getTotalGuesses());
 		}
@@ -51,6 +54,7 @@ public class Testing {
 		return retval;
 	}
 	
+	/*
 	public static double rootMeanSquareError(IRegressor regression, List<DataEntry> dataset){
 		double retval = 0;
 		for(DataEntry d : dataset){
@@ -63,12 +67,13 @@ public class Testing {
 		retval = retval/((double)dataset.size());
 		return Math.sqrt(retval);
 	}
+	*/
 	
-	public static ClassifierResults testSet(IClassifier classifier, List<DataEntry> testset){
+	public static ClassifierResults testSet(IClassifier classifier, DataSet testset){
 		ClassifierResults retval = new ClassifierResults(0,0);
-		for(DataEntry entry : testset){
-			Object y = entry.getY();
-			Object classification = classifier.classify(entry.getX());
+		for(int i = 0; i < testset.size(); i++){
+			Object y = testset.y[i];
+			Object classification = classifier.classify(testset.x[i]);
 			if(classification != null && classification.equals(y)) retval.incrementCorrectGuesses();
 			retval.incrementTotalGuesses();
 		}

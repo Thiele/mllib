@@ -4,7 +4,7 @@ import java.util.ArrayList;
 
 import nu.thiele.mllib.utils.Statistics;
 
-public class GaussianKernelEstimator extends KernelEstimator{
+public class GaussianKernelEstimator extends KernelEstimator implements KernelEstimatorFactory{
 	private ArrayList<Double> ar = new ArrayList<Double>();
 	private double sum = 0.0;
 	
@@ -45,5 +45,11 @@ public class GaussianKernelEstimator extends KernelEstimator{
 			double base = 1.0/(Math.sqrt(2*Math.PI));
 			return base*Math.pow(Math.E, -0.5*dat*dat);
 		}
+	}
+
+	@Override
+	public KernelEstimator newInstance() {
+		// TODO Auto-generated method stub
+		return new GaussianKernelEstimator();
 	}
 }

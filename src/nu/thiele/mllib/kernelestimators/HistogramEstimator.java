@@ -7,7 +7,7 @@ import java.util.TreeSet;
 
 import nu.thiele.mllib.utils.Statistics;
 
-public class HistogramEstimator extends KernelEstimator{
+public class HistogramEstimator extends KernelEstimator implements KernelEstimatorFactory{
 	private ArrayList<Double> ar;
 	private double total = 0;
 	public HistogramEstimator(){
@@ -79,5 +79,11 @@ public class HistogramEstimator extends KernelEstimator{
 	protected Object[] getEstimatorParametersForEstimation() {
 		// TODO Auto-generated method stub
 		return null;
+	}
+
+	@Override
+	public KernelEstimator newInstance() {
+		// TODO Auto-generated method stub
+		return new HistogramEstimator();
 	}
 }

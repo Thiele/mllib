@@ -4,7 +4,7 @@ import java.util.ArrayList;
 
 import nu.thiele.mllib.utils.Statistics;
 
-public class NormalDistributionEstimator extends KernelEstimator{
+public class NormalDistributionEstimator extends KernelEstimator implements KernelEstimatorFactory{
 	private ArrayList<Double> ar =new ArrayList<Double>();
 	
 	@Override
@@ -23,5 +23,11 @@ public class NormalDistributionEstimator extends KernelEstimator{
 		double std = Statistics.standardDeviation(this.ar,avg);
 		Object[] retval = {avg, std}; //Avg and standard deviation
 		return retval;
+	}
+
+	@Override
+	public KernelEstimator newInstance() {
+		// TODO Auto-generated method stub
+		return new NormalDistributionEstimator();
 	}
 }

@@ -33,7 +33,7 @@ public class RadialRegressor implements IRegressor{
 				Matrix targets = new Matrix(trainingset.size(),1);
 				int i = 0;
 				for(DataEntry d : trainingset){
-					targets.set(i, 0, Double.valueOf(d.getY().toString()));
+					targets.set(i, 0, d.getY());
 					i++;
 				}
 				targets = targets.transpose();

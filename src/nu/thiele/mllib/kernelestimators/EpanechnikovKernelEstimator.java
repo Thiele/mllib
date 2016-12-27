@@ -6,7 +6,7 @@ import java.util.List;
 
 import nu.thiele.mllib.utils.Statistics;
 
-public class EpanechnikovKernelEstimator extends KernelEstimator{
+public class EpanechnikovKernelEstimator extends KernelEstimator implements KernelEstimatorFactory{
 	private ArrayList<Double> ar = new ArrayList<Double>();
 	private double sum = 0.0;
 	
@@ -67,5 +67,10 @@ public class EpanechnikovKernelEstimator extends KernelEstimator{
 		double min = Statistics.min(this.ar);
 		double max = Statistics.max(this.ar);
 		return new Object[]{min,max};
+	}
+	@Override
+	public KernelEstimator newInstance() {
+		// TODO Auto-generated method stub
+		return new EpanechnikovKernelEstimator();
 	}
 }
