@@ -209,14 +209,6 @@ public class MultiLayerPerceptron implements IClassifier, IMultiClassifier{
 		writer.close();
 	}
 	
-	public double[][] simulate(double[][] input) throws Exception{
-		double[][] retval = new double[input.length][];
-		for(int i = 0; i < input.length; i++){
-			retval[i] = this.classifyMultipleOutputs(input[i]);
-		}
-		return retval;
-	}
-	
 	@Override
 	public double[] classifyMultipleOutputs(double[] input){
 		//Reset anything first
@@ -267,7 +259,7 @@ public class MultiLayerPerceptron implements IClassifier, IMultiClassifier{
 		return totalError;
 	}
 	
-	public void commitWeightChanges(){
+	private void commitWeightChanges(){
 		for(Neuron n : this.idToNeuronMap.values()) n.commitWeights();
 	}
 	
@@ -341,41 +333,17 @@ public class MultiLayerPerceptron implements IClassifier, IMultiClassifier{
 		return retval;
 	}
 	
-	public List<Neuron> getAllNonOutputNeurons(){
-		List<Neuron> retval = this.getAllBiasNeurons();
-		retval.addAll(this.getAllHiddenNeurons());
-		for(Neuron n : this.inputs) retval.add(n);
-		return retval;
-	}
-	
-	public List<Neuron> getAllBiasNeurons(){
-		List<Neuron> retval = new LinkedList<Neuron>();
-		retval.addAll(this.biases);
-		return retval;
-	}
-	
-	public List<Neuron> getAllHiddenNeurons(){
-		LinkedList<Neuron> retval = new LinkedList<Neuron>();
-		for(List<Neuron> l : this.hiddenLayers){
-			for(Neuron n : l) retval.add(n);
-		}
-		return retval;
-	}
-	
-	public Neuron getNeuronById(String id){
-		return this.idToNeuronMap.get(id);
-	}
 	
 	public void setWeightRandom(String fromId, String toId){
 		this.setWeightRandom(this.idToNeuronMap.get(fromId), this.idToNeuronMap.get(toId));
 	}
 
-	public void setWeightRandom(Neuron from, Neuron to){
+	private void setWeightRandom(Neuron from, Neuron to){
 		from.setWeight(to, this.rand.nextDouble());	
 		from.commitWeights();
 	}
 	
-	public void setWeight(Neuron from, Neuron to, double d){
+	private void setWeight(Neuron from, Neuron to, double d){
 		from.setWeight(to, d);
 		from.commitWeights();
 	}
