@@ -24,15 +24,17 @@ public class NearestNeighbour implements IClassifier{
 	private List<DataEntry> dataSet;
 	private DistanceWeighing weight = DistanceWeighing.INDICATOR;
 	
-	
 	/**
 	 * 
 	 * @param dataSet The set. I assume that everything is fine with regards to feature vector
 	 * @param k The number of neighbours to use
 	 */
-	public NearestNeighbour(List<DataEntry> dataSet, int k){
+	public NearestNeighbour(int k){
 		this.k = k;
-		this.dataSet = dataSet;
+	}
+	
+	public NearestNeighbour(){
+		this(10);
 	}
 	
 	public static DataEntry[] getKNearestNeighbours(List<DataEntry> dataSet, final double[] x, int k){
@@ -98,13 +100,13 @@ public class NearestNeighbour implements IClassifier{
 	 * @param e Entry to be classifies
 	 * @return The class of the most probable class
 	 */
-	public Object classify(double[] x){
-		Map<Object, Double> classcount = this.calculateProbabilityForClassifications(x);
+	public double classify(double[] x){
+		Map<Double, Double> classcount = this.probability(x);
 		//Find right choice
-		Object o = null;
+		double o = -1;
 		double max = 0;
-		HashMap<String,Object> toStringMap = new HashMap<String,Object>();
-		for(Object ob : classcount.keySet()){
+		HashMap<String,Double> toStringMap = new HashMap<String,Double>();
+		for(Double ob : classcount.keySet()){
 			toStringMap.put(ob.toString(), ob);
 			if(classcount.get(ob) > max){
 				max = classcount.get(ob);
@@ -127,11 +129,11 @@ public class NearestNeighbour implements IClassifier{
 	}
 
 	@Override
-	public void loadClassifier() {} //Lazy classifier, do nothing...
-
-	@Override
-	public void setTrainingData(List<DataEntry> data) {
-		this.dataSet = data;
+	public void train(double[][] x, double[] y) {
+		this.dataSet = new LinkedList<DataEntry>();
+		for(int i = 0; i < x.length; i++){
+			this.dataSet.add(new DataEntry(x[i], y[i]));
+		}
 	}
 	
 	public void setWeighing(DistanceWeighing w){
@@ -143,8 +145,8 @@ public class NearestNeighbour implements IClassifier{
 	}
 
 	@Override
-	public Map<Object, Double> calculateProbabilityForClassifications(double[] x) {
-		HashMap<Object,Double> classcount = new HashMap<Object,Double>();
+	public Map<Double, Double> probability(double[] x) {
+		HashMap<Double,Double> classcount = new HashMap<Double,Double>();
 		DataEntry[] de = this.getNearestNeighbourType(x);
 		for(int i = 0; i < de.length; i++){
 			double weight = this.getWeight(distance(x, de[i].getX())); 

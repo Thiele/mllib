@@ -1,570 +1,440 @@
 package nu.thiele.mllib.classifiers;
 
-import java.io.FileNotFoundException;
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.IOException;
 import java.io.PrintWriter;
-import java.io.UnsupportedEncodingException;
-import java.lang.Math;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.Map;
-
-import nu.thiele.mllib.data.Data.DataEntry;
-import nu.thiele.mllib.exceptions.InvalidArgumentException;
+import java.util.Random;
+import java.util.TreeMap;
+import nu.thiele.mllib.neurons.HiddenNeuron;
+import nu.thiele.mllib.neurons.InputNeuron;
+import nu.thiele.mllib.neurons.Neuron;
+import nu.thiele.mllib.neurons.OutputNeuron;
 import nu.thiele.mllib.regression.IRegressor;
-import nu.thiele.mllib.utils.Statistics;
-import nu.thiele.mllib.utils.Testing;
 
 /**
  * @author Andreas Thiele
  */
-public class MultiLayerPerceptron implements IClassifier, IRegressor{
+public class MultiLayerPerceptron implements IClassifier, IMultiClassifier{
 	/**
 	 * Example of the network solving the XOR-problem  
 	 */
 	public static void main(String[] args){
-		ActivationFunctions functions = new ActivationFunctions(){
-			@Override
-			public double activation(double a) {
-				return a/(1+Math.abs(a));
-			}
-			@Override
-			public double sigmoid(double d) { //Applied to output neurons to map into wanted space.
-				return d;
-			}
-			@Override
-			public double derivative(double a) {
-				double n = (1+Math.abs(a));
-				return 1/(n*n);
-			}
-		};
-		MultiLayerPerceptron mlp = new MultiLayerPerceptron(2, 2, 	1, 1, 0.1, functions);
+		MultiLayerPerceptron mlp = new MultiLayerPerceptron(1);
+		
+		//mlp.build(2,new int[]{2}, 3);
 		
 		double[][] x = new double[4][];
 		x[0] = new double[]{0.0,0.0};
 		x[1] = new double[]{0.0,1.0};
 		x[2] = new double[]{1.0,0.0};
 		x[3] = new double[]{1.0,1.0};
-		double[] y = {0,1,1,0};
-		List<DataEntry> datas = new LinkedList<DataEntry>();
-		for(int i = 0; i < x.length; i++){
-			datas.add(new DataEntry(x[i], new double[]{y[i]}));
-		}
+		double[] y = {7,3,3,1};
 
-		for(int i = 0; i < 1000000; i++){
-			mlp.trainBatch(datas);
-		}
+		mlp.train(x, y, 5000);
+		
 		for(int i = 0; i < 4; i++){
-			System.out.println("Classifying: "+i+", y: "+mlp.regress(x[i])+", real value: "+y[i]);
+			System.out.println("Classifying: "+i+", y: "+mlp.classify(x[i])+", real value: "+y[i]);
 		}
 	}
-	private double learningrate;
-	private List<List<Neuron>> hidden;
-	private List<Neuron> input;
-	private List<Neuron> output;
-	private HashMap<Neuron,Integer> inputIndex;
-	private HashMap<Integer,HashMap<Neuron,Integer>> hiddenIndex;
-	private ActivationFunctions functions;
-	private Object[] classes;
-	public MultiLayerPerceptron(int input, int hidden, Object[] tClasses, int numberOfHiddenLayers, double learningrate){
-		this(input,hidden,tClasses.length,numberOfHiddenLayers,learningrate,MultiLayerPerceptron.STANDARD_FUNCTIONS);
-		this.classes = tClasses;
+	
+	private ArrayList<InputNeuron> inputs = new ArrayList<InputNeuron>();
+	private ArrayList<ArrayList<Neuron>> hiddenLayers = new ArrayList<ArrayList<Neuron>>();
+	private ArrayList<OutputNeuron> outputs = new ArrayList<OutputNeuron>();
+	private ArrayList<InputNeuron> biases = new ArrayList<InputNeuron>();
+	private HashMap<String, Neuron> idToNeuronMap = new HashMap<String,Neuron>();
+	private TreeMap<Double, Integer> classToOutputIndexMap = new TreeMap<Double,Integer>();
+	private TreeMap<Integer, Double> outputIndexToClassMap = new TreeMap<Integer, Double>();
+	private Random rand;
+	private double learningRate;
+	private boolean isBuilt;
+	
+	public MultiLayerPerceptron(int numHidden){
+		this(numHidden, 0.5);
 	}
 	
-	public MultiLayerPerceptron(int input, int hidden, Object[] tClasses, int numberOfHiddenLayers, double learningrate, ActivationFunctions functions){
-		this(input,hidden,tClasses.length,numberOfHiddenLayers,learningrate,functions);
-		this.classes = tClasses;
+	public MultiLayerPerceptron(int numHidden, double lr){
+		this.learningRate = lr;
+		for(int i = 0; i <= numHidden; i++){
+			InputNeuron bias;
+			if(i == 0){
+				bias = new InputNeuron("B I");
+			}
+			else{
+				hiddenLayers.add(new ArrayList<Neuron>());
+				bias = new InputNeuron("B H "+i);
+			}
+			biases.add(bias);
+			this.idToNeuronMap.put(bias.getIdentifier(), bias);
+		}
 	}
 	
-	public MultiLayerPerceptron(int input, int hidden, int output, int numberOfHiddenLayers, double learningrate, ActivationFunctions functions){
-		this.hiddenIndex = new HashMap<Integer,HashMap<Neuron,Integer>>();
-		this.inputIndex = new HashMap<Neuron,Integer>();
-		this.functions = functions;
-		this.hidden = new LinkedList<List<Neuron>>();
-		this.input = new LinkedList<Neuron>();
- 		this.output = new LinkedList<Neuron>();
- 		this.learningrate = learningrate;
- 		//Input
- 		for(int i = 1; i <= input; i++){
- 			this.input.add(new Neuron(NeuronType.Input, this.functions, this.learningrate));
- 		}
- 		for(Neuron i : this.input){
- 			this.inputIndex.put(i, this.input.indexOf(i));
- 		}
- 		
- 		//Hidden
- 		for(int i = 1; i <= numberOfHiddenLayers; i++){
- 			List<Neuron> a = new LinkedList<Neuron>();
- 			for(int j = 1; j <= hidden; j++){
- 				a.add(new Neuron(NeuronType.Hidden, this.functions, this.learningrate));
- 			}
- 			this.hidden.add(a);
- 		}
- 		for(List<Neuron> a : this.hidden){
- 			HashMap<Neuron,Integer> put = new HashMap<Neuron,Integer>();
- 			for(Neuron h : a){
- 				put.put(h, a.indexOf(h));
- 			}
- 			this.hiddenIndex.put(this.hidden.indexOf(a), put);
- 		}
- 		
- 		//Output
- 		for(int i = 1; i <= output; i++){
- 			this.output.add(new Neuron(NeuronType.Output, this.functions, this.learningrate));
- 		} 		
- 		
- 		for(Neuron i : this.input){
- 			for(Neuron h : this.hidden.get(0)){
- 				i.connect(h, Math.random()*(Math.random() > 0.5 ? 1 : -1));
- 			}
- 		}
- 		for(int i = 1; i < this.hidden.size(); i++){
- 			for(Neuron h : this.hidden.get(i-1)){
- 				for(Neuron hto : this.hidden.get(i)){
- 					h.connect(hto, Math.random()*(Math.random() > 0.5 ? 1 : -1));
- 				}
- 			}
- 		}
- 		for(Neuron h : this.hidden.get(this.hidden.size()-1)){
- 			for(Neuron o : this.output){
- 				h.connect(o, Math.random()*(Math.random() > 0.5 ? 1 : -1));
- 			}
- 		}
- 	}
+	public void printNetwork(){
+		System.out.println("===== INPUTS =====");
+		for(InputNeuron in : this.inputs){
+			System.out.println("=== "+in.getIdentifier());
+			for(Neuron n : in.getFowrardsConnections()){
+				System.out.println("=> "+n.getIdentifier()+" weight: "+in.getWeight(n));
+			}
+		}
+		System.out.println("===== HIDDEN LAYERS =====");
+		for(int i = 0; i < this.hiddenLayers.size(); i++){
+			System.out.println("=== Layer "+(i+1));
+			for(Neuron n : this.hiddenLayers.get(i)){
+				System.out.println("=== "+n.getIdentifier());
+				for(Neuron next : n.getFowrardsConnections()){
+					System.out.println("=> "+next.getIdentifier()+" weight: "+n.getWeight(next));					
+				}
+			}
+		}
+		System.out.println("===== BIAS =====");
+		for(InputNeuron in : this.biases){
+			System.out.println("=== "+in.getIdentifier());
+			for(Neuron n : in.getFowrardsConnections()){
+				System.out.println("=> "+n.getIdentifier()+" weight: "+in.getWeight(n));
+			}
+		}
+	}
 	
-	/**
-	 * @param exp The expected value of the input
-	 */
-	private void backpropagate(double[] exp){
-		//Calculate output error
-		int i = 0;
-		for(Neuron outputNeuron : this.output){
-			outputNeuron.setError((exp[i] - outputNeuron.getLatestOutput()));
-			//And update its bias
-			outputNeuron.addBiasChange(outputNeuron.getError());
+	private double getRandomWeight(){
+		if(this.rand == null) this.rand = new Random();
+		return this.rand.nextDouble() * (this.rand.nextBoolean() ? 1 : - 1);
+	}
+	
+	public void build(int input, int[] hiddens, int output){
+		//Build only if not done so already
+		if(this.isBuilt) return;
+		
+		//Add the neurons
+		for(int i = 1; i <= input; i++) this.addInput();
+		for(int i = 1; i <= output; i++) this.addOutput();
+		//Is something set for hiddens? Otherwise just use 10
+		if(hiddens.length == 0) hiddens = new int[]{10};
+		
+		for(int h = 0; h < hiddens.length; h++){
+			for(int i = 0; i < hiddens[h]; i++) this.addHidden(h);
+		}
+		
+		//Add biases first
+		for(int i = 0; i < biases.size(); i++){
+			if(i == biases.size()-1){
+				for(OutputNeuron o : outputs) biases.get(i).addConnectionForward(o, this.getRandomWeight());
+			}
+			else{
+				for(Neuron n : hiddenLayers.get(i)) biases.get(i).addConnectionForward(n, this.getRandomWeight());
+			}
+		}
+		for(InputNeuron in : this.inputs){
+			//No hidden layers. Just connect to output
+			if(this.hiddenLayers.size() == 0){
+				for(OutputNeuron o : this.outputs) in.addConnectionForward(o, this.getRandomWeight());
+			}
+			else{
+				//There are hidden layers. Add connections to first
+				for(Neuron n : this.hiddenLayers.get(0)) in.addConnectionForward(n, this.getRandomWeight());
+			}
+		}
+		
+		
+		//If any hidden layers, add layers moving forwards for all
+		for(int i = 0; i < hiddenLayers.size(); i++){
+			for(Neuron n : hiddenLayers.get(i)){
+				if(i == hiddenLayers.size()-1){
+					for(OutputNeuron o : this.outputs) n.addConnectionForward(o, this.getRandomWeight());
+				}
+				else{
+					for(Neuron next : this.hiddenLayers.get(i+1)) n.addConnectionForward(next, this.getRandomWeight());
+				}
+			}
+		}
+		this.isBuilt = true;
+	}
+	
+	private void addInput(){
+		InputNeuron i = new InputNeuron("I "+(this.inputs.size()+1));
+		this.inputs.add(i);
+		this.idToNeuronMap.put(i.getIdentifier(), i);
+	}
+	
+	private void addHidden(int numLayer){
+		HiddenNeuron n = new HiddenNeuron("H "+(numLayer+1)+" "+(this.hiddenLayers.get(numLayer).size()+1));
+		this.hiddenLayers.get(numLayer).add(n);
+		this.idToNeuronMap.put(n.getIdentifier(), n);
+	}
+	
+	private void addOutput(){
+		OutputNeuron o = new OutputNeuron("O "+(this.outputs.size()+1));
+		this.outputs.add(o);
+		this.idToNeuronMap.put(o.getIdentifier(), o);
+	}
+	
+	public void saveNetwork(String path) throws IOException{
+		PrintWriter writer = new PrintWriter(path, "UTF-8");
+		HashSet<String> allIds = new HashSet<String>();
+		//Save nodes
+		writer.println("I "+this.inputs.size());
+		writer.println("O "+this.outputs.size());
+		for(Neuron n : this.inputs){
+			allIds.add(n.getIdentifier());
+		}
+		int i = 1;
+		for(List<Neuron> list : this.hiddenLayers){
+			writer.println("H "+i+" "+list.size());
 			i++;
-		}
-		//From hidden to hidden and input to hidden
-		for(i = this.hidden.size()-1; i >= 0; i--){
-			for(Neuron h : this.hidden.get(i)){
-				double p = this.functions.derivative(h.getLatestSum());
-				double k = 0;
-				for(Synaps s : h.getconnectedTo()){
-					k += s.getTo().getError()*s.getweight();
-				}
-				h.setError(p * k);
-			}
-			//Update bias
-			for(Neuron neuron : this.hidden.get(i)){
-				neuron.addBiasChange(neuron.getError());
+			for(Neuron n : list){
+				allIds.add(n.getIdentifier());
 			}
 		}
-		//And update all weights
-		for(Neuron n : this.input){
-			for(Synaps s : n.getconnectedTo()){
-				s.addWeightChange(s.getTo().getError() * n.getLatestInput());
+		for(Neuron n : this.outputs){
+			allIds.add(n.getIdentifier());
+		}
+		//Save biases
+		for(Neuron n : this.biases){
+			allIds.add(n.getIdentifier());
+		}
+		//Save all weights
+		for(String id : allIds){
+			Neuron from = this.idToNeuronMap.get(id);
+			for(Neuron to : from.forwardConnections){
+				writer.println("W "+from.getIdentifier()+","+to.getIdentifier()+","+from.getWeight(to));				
 			}
 		}
-		for(List<Neuron> l : this.hidden){
-			for(Neuron n : l){
-				for(Synaps s : n.getconnectedTo()){
-					s.addWeightChange(s.getTo().getError() * n.getLatestOutput());
-				}
-			}
-		}
+		
+		writer.close();
 	}
 	
-	/**
-	 * 
-	 * @param input Input to be classified
-	 * @return The classification of the input
-	 */
-	public Object classify(double[] input) {
+	public double[][] simulate(double[][] input) throws Exception{
+		double[][] retval = new double[input.length][];
 		for(int i = 0; i < input.length; i++){
-			this.input.get(i).input(input[i]);
-		}
-		//Propagate stuff
-		for(Neuron n : this.input) n.propagate();
-		for(List<Neuron> list : this.hidden){
-			for(Neuron n : list) n.propagate();
-		}
-		for(Neuron n : this.output) n.propagate();
-		double[] r = new double[this.output.size()];
-		int highestIndex = 0;
-		double highestVal = Double.MIN_VALUE;
-		for(int i = 0; i < r.length; i++){
-			r[i] = this.output.get(i).getLatestOutput();
-			if(r[i] > highestVal){
-				highestIndex = i;
-				highestVal = r[i];
-			}
-		}
-		//Find the largest one
-		return this.classes[highestIndex];
-	}	
-	
-	private void applyUpdates(){
-		for(Neuron n : this.input){
-			n.applyBiasChanges();
-			for(Synaps s : n.getconnectedTo()) s.applyWeightChange();
-		}
-		for(List<Neuron> h : this.hidden){
-			for(Neuron n : h){
-				n.applyBiasChanges();
-				for(Synaps s : n.getconnectedTo()) s.applyWeightChange();
-			}
-		}
-		for(Neuron n : this.output){
-			n.applyBiasChanges();
-			for(Synaps s : n.getconnectedTo()) s.applyWeightChange();
-		}
-	}
-	
-	public void train(DataEntry data){
-		if(this.classes == null){
-			this.regress(data.getX());
-		}
-		else this.classify(data.getX());
-		backpropagate(this.encodeYToDoubleArray(data.getY()));
-		this.applyUpdates();
-	}
-	
-	public void trainOnline(List<DataEntry> datas){
-		for(DataEntry data : datas){
-			this.train(data);
-		}
-	}
-	
-	public void train(List<DataEntry> datasOrg, List<DataEntry> testSet, AcceptanceCriteria criteria){
-		List<DataEntry> datas = new LinkedList<DataEntry>(datasOrg);
-		double mserror = Testing.rootMeanSquareError(this, testSet);
-		double trainMsError = Testing.rootMeanSquareError(this, datasOrg);
-		for(int epoch = 1; !criteria.isAccepted(epoch, mserror, trainMsError); epoch++){
-			Collections.shuffle(datas); //Do not learn some stupid ordering
-			this.trainBatch(datas);
-			trainMsError = Testing.rootMeanSquareError(this, datas);
-			mserror = Testing.rootMeanSquareError(this, testSet);
-		}
-	}
-	
-	public void train(List<DataEntry> datasOrg, List<DataEntry> testSet, ClassificationAcceptanceCriteria criteria){
-		List<DataEntry> datas = new LinkedList<DataEntry>(datasOrg);
-		double acc = Testing.testSet(this, testSet).getAccuracy();
-		double tsAcc = Testing.testSet(this, datasOrg).getAccuracy();
-		for(int epoch = 1; !criteria.isAccepted(epoch, 1-acc, 1-tsAcc); epoch++){
-			Collections.shuffle(datas); //Do not learn some stupid ordering
-			this.trainBatch(datas);
-			acc = Testing.testSet(this, testSet).getAccuracy();
-			tsAcc = Testing.testSet(this, datasOrg).getAccuracy();
-		}
-	}
-	
-	public void trainBatch(List<DataEntry> datas){
-		for(DataEntry data : datas){
-			if(this.classes == null) this.regress(data.getX());
-			else this.classify(data.getX());//Forward...
-			double[] y = this.encodeYToDoubleArray(data.getY());
-			backpropagate(y); //Backward
-		}
-		this.applyUpdates();
-	}
-	
-	private double[] encodeYToDoubleArray(Object y){
-		if(y instanceof double[]) return (double[]) y;
-		if(y instanceof Double) return new double[]{Double.valueOf(y.toString())};
-		double[] retval = new double[this.classes.length];
-		int i = 0;
-		for(Object o : this.classes){
-			if(o.equals(y)){
-				retval[i] = 1;
-				break;
-			}
-			i++;
+			retval[i] = this.classifyMultipleOutputs(input[i]);
 		}
 		return retval;
 	}
 	
-	private class Neuron {
-		private double latestoutput = 0, sum, biasWeight = 1, error, learningrate, latestSum, latestInput;
-		private List<Synaps> connectedFrom, connectedTo;
-		private ActivationFunctions funs;
-		private NeuronType type;
-		private double biasChange = 0;
-		public Neuron(NeuronType type, ActivationFunctions funs, double learningrate){
-			this.learningrate = learningrate;
-			this.funs = funs;
-			this.type = type;
-			this.connectedFrom = new LinkedList<Synaps>();
-			this.connectedTo = new LinkedList<Synaps>();
-		}
-		
-		private void addFrom(Synaps s){
-			this.connectedFrom.add(s);
-		}
-		
-		private void connect(Neuron e, double weight){
-			Synaps s = new Synaps(this, e, weight, this.learningrate);
-			e.addFrom(s);
-			this.connectedTo.add(s);
-		}
-		
-		private double getError(){
-			return this.error;
-		}
-				
-		private double getLatestOutput(){
-			return this.latestoutput;
-		}
-		
-		private void input(double input){
-			this.sum = sum+input;
-		}
-		
-		private void addBiasChange(double d){
-			this.biasChange += d;
-		}
-		
-		private void applyBiasChanges(){
-			this.biasWeight += this.biasChange * this.learningrate;
-			this.biasChange = 0;
-		}
-		
-		private void propagate(){
-			this.latestInput = this.sum;
-			this.sum += this.biasWeight;
-			this.latestSum = this.sum;
-			if(this.type == NeuronType.Hidden){
-				this.latestoutput = this.funs.activation(this.sum);	
-			}
-			else if(this.type == NeuronType.Input){
-				this.latestoutput = this.sum;
-			}
-			else if(this.type == NeuronType.Output){
-				this.latestoutput = this.funs.sigmoid(this.sum);
-			}
-			for(Synaps n : this.connectedTo){
-				if(this.type == NeuronType.Input || this.type == NeuronType.Hidden){
-					n.getTo().input(this.latestoutput*n.getweight());
-				}
-				//Else output. No need to pass along
-			}
-			this.sum = 0.0;
-		}
-		
-		private double getLatestSum(){
-			return this.latestSum;
-		}
-		
-		private double getLatestInput(){
-			return this.latestInput;
-		}
-		
-		private void setError(double e){
-			this.error = e;
-		}
-		
-		private List<Synaps> getconnectedTo(){
-			return this.connectedTo;
-		}
-		
-		public String toString(){
-			String retur = this.hashCode()+" with "+this.connectedTo.size()+" connections";
-			return retur;
-		}
-	}
-	
-	
-	/**
-	 * 
-	 * Private class to connect neurons
-	 *
-	 */
-	private class Synaps {
-		private Neuron to;
-		private double weight, weightUpdate = 0, learningrate;
-		private Synaps(Neuron from, Neuron to, double weight, double learningrate){
-			this.to= to;
-			this.weight = weight;
-			this.learningrate = learningrate;
-		}
-		
-		private void addWeightChange(double d){
-			this.weightUpdate += d;
-		}
-		private void applyWeightChange(){
-			this.weight += this.weightUpdate * this.learningrate;
-			this.weightUpdate = 0;
-		}
-		
-		private double getweight(){
-			return this.weight;
-		}
-		
-		private Neuron getTo(){
-			return this.to;
-		}
-		
-		public String toString(){
-			return weight+"";
-		}
-	}
-	
-	public static interface AcceptanceCriteria{
-		public boolean isAccepted(int epoch, double MSError, double trainMSErorr);
-	}
-	
-	public static interface ClassificationAcceptanceCriteria{
-		public boolean isAccepted(int epoch, double error, double trainError);
-	}
-	
-	public static interface ActivationFunctions{
-		public double activation(double a);
-		public double derivative(double a);
-		public double sigmoid(double d);
-	}
-	public static enum LearningMethod{
-		Batch, Online, Stochastic
-	}
-	private static enum NeuronType{
-		Input, Hidden, Output
-	}
 	@Override
-	public void loadClassifier() {}
+	public double[] classifyMultipleOutputs(double[] input){
+		//Reset anything first
+		for(Neuron n : this.idToNeuronMap.values()) n.reset();
+		
+		//Fire biases first
+		for(InputNeuron b : this.biases) b.input(1);
+		for(int i = 0; i < input.length; i++) this.inputs.get(i).input(input[i]);
+		
+		double[] retval = new double[this.outputs.size()];
+		for(int i = 0; i < this.outputs.size(); i++) retval[i] = this.outputs.get(i).getLatestOutput();
+		return retval;
+	}
+	
+	private double backpropagate(double[] guesses, double[] targets){
+		double totalError = this.getTotalErrorSingle(guesses, targets);
+		//Don't worry about biases. They will be handled fine without explicitly using them
+		//For last hidden => output layer
+		for(int i = 0; i < this.outputs.size(); i++){
+			OutputNeuron n = this.outputs.get(i);
+			n.setError(guesses[i]*(targets[i]-guesses[i])*Neuron.activationFunctionDerivative(guesses[i]));
+			for(Neuron prev : n.getBackwardsConnections()){
+				double change = this.learningRate * n.getError() * prev.getLatestOutput();
+				prev.setWeight(n, prev.getWeight(n)+change);
+			}
+		}
+		//For all other layers. Note: Look only in hidden layers, since input layer will be handled
+		for(int i = this.hiddenLayers.size()-1; i >= 0; i--){
+			List<Neuron> layer = this.hiddenLayers.get(i);
+			for(Neuron n : layer){
+				double errOut = 0;
+				for(Neuron next : n.getFowrardsConnections()){
+					double tmp = next.getError() * n.getWeight(next);
+					errOut += tmp;
+				}
+				n.setError(errOut*n.getLatestOutput()*Neuron.activationFunctionDerivative(n.getLatestOutput()));
+				//And update weights
+				for(Neuron prev : n.getBackwardsConnections()){
+					double change = this.learningRate * n.getError() * prev.getLatestOutput();
+					prev.setWeight(n, prev.getWeight(n)+change);
+				}
+			}
+		}
+		
+		//And commit weight changes
+		this.commitWeightChanges();
+		
+		return totalError;
+	}
+	
+	public void commitWeightChanges(){
+		for(Neuron n : this.idToNeuronMap.values()) n.commitWeights();
+	}
+	
+	public MultiLayerPerceptron copy(){
+		MultiLayerPerceptron retval = new MultiLayerPerceptron(this.hiddenLayers.size(), this.learningRate);
+		int[] hiddensSizes = new int[]{this.hiddenLayers.size()};
+		for(int i = 0; i < this.hiddenLayers.size(); i++){
+			hiddensSizes[i] = this.hiddenLayers.get(i).size();
+		}
+		retval.build(this.inputs.size(), hiddensSizes, this.outputs.size());
+		for(String id : this.idToNeuronMap.keySet()){
+			for(Neuron n : this.idToNeuronMap.get(id).forwardConnections){
+				retval.setWeight(id, n.getIdentifier(), this.idToNeuronMap.get(id).getWeight(n));
+			}
+		}
+		return retval;
+	}
+	
+	public double getTotalError(double[][] guesses, double[][] targets){
+		double sum = 0;
+		for(int i = 0; i < guesses.length; i++) sum += this.getTotalErrorSingle(guesses[i], targets[i]);
+		return sum;
+	}
+	
+	public double getTotalErrorSingle(double[] guesses, double[] targets){
+		double totalError = 0;
+		for(int i = 0; i < guesses.length; i++){
+			double err = guesses[i]-targets[i];
+			totalError += err*err/2.0;
+		}
+		return totalError;
+	}
+	
+	@Override
+	public void train(double[][] xs, double[] ys){
+		this.train(xs, ys, 1000);
+	}
+	
+	public void train(double[][] xs, double[] ys, int times){
+		if(this.classToOutputIndexMap.isEmpty()){
+			for(double y : ys){
+				if(!this.classToOutputIndexMap.containsKey(y)){
+					this.classToOutputIndexMap.put(y, this.classToOutputIndexMap.size());
+					this.outputIndexToClassMap.put(this.classToOutputIndexMap.get(y), y);
+				}
+			}
+		}
+		
+		if(!this.isBuilt){
+			//Count different classes
+			HashSet<Double> classes = new HashSet<Double>();
+			for(double d : ys){
+				if(!classes.contains(d)) classes.add(d);
+			}
+			this.build(xs[0].length, new int[]{}, classes.size());
+		}
+		
+		for(int i = 1; i <= times; i++){
+			for(int j = 0; j < xs.length; j++){
+				double[] guesses = this.classifyMultipleOutputs(xs[j]);
+				this.backpropagate(guesses, this.oneHotEncode(this.classToOutputIndexMap.get(ys[j])));
+			}
+		}
+	}
+	
+	private double[] oneHotEncode(double val){
+		double[] retval = new double[this.outputs.size()];
+		for(double d = 0; d < retval.length; d++){
+			if(d == val) retval[(int) d] = 1;
+		}
+		return retval;
+	}
+	
+	public List<Neuron> getAllNonOutputNeurons(){
+		List<Neuron> retval = this.getAllBiasNeurons();
+		retval.addAll(this.getAllHiddenNeurons());
+		for(Neuron n : this.inputs) retval.add(n);
+		return retval;
+	}
+	
+	public List<Neuron> getAllBiasNeurons(){
+		List<Neuron> retval = new LinkedList<Neuron>();
+		retval.addAll(this.biases);
+		return retval;
+	}
+	
+	public List<Neuron> getAllHiddenNeurons(){
+		LinkedList<Neuron> retval = new LinkedList<Neuron>();
+		for(List<Neuron> l : this.hiddenLayers){
+			for(Neuron n : l) retval.add(n);
+		}
+		return retval;
+	}
+	
+	public Neuron getNeuronById(String id){
+		return this.idToNeuronMap.get(id);
+	}
+	
+	public void setWeightRandom(String fromId, String toId){
+		this.setWeightRandom(this.idToNeuronMap.get(fromId), this.idToNeuronMap.get(toId));
+	}
 
-	@Override
-	public void setTrainingData(List<DataEntry> data)
-			throws InvalidArgumentException {}
+	public void setWeightRandom(Neuron from, Neuron to){
+		from.setWeight(to, this.rand.nextDouble());	
+		from.commitWeights();
+	}
+	
+	public void setWeight(Neuron from, Neuron to, double d){
+		from.setWeight(to, d);
+		from.commitWeights();
+	}
+	
+	public void setWeight(String fromId, String toId, double d){
+		this.setWeight(this.idToNeuronMap.get(fromId), this.idToNeuronMap.get(toId), d);
+	}
+	
+	public static MultiLayerPerceptron loadPerceptron(String path) throws IOException{
+		BufferedReader br = new BufferedReader(new FileReader(path));
 
-	@Override
-	public double regress(double[] x) {
-		for(int i = 0; i < x.length; i++){
-			this.input.get(i).input(x[i]);
-		}
-		//Propagate stuff
-		for(Neuron n : this.input) n.propagate();
-		for(List<Neuron> list : this.hidden){
-			for(Neuron n : list) n.propagate();
-		}
-		for(Neuron n : this.output) n.propagate();
-		double[] r = new double[this.output.size()];
-		for(int i = 0; i < r.length; i++){
-			r[i] = this.output.get(i).getLatestOutput();
-		}
-		return r[0];
-	}
-	
-	private static ActivationFunctions STANDARD_FUNCTIONS = new ActivationFunctions(){
-		@Override
-		public double activation(double a) {
-			return a/(1+Math.abs(a));
-		}
-		@Override
-		public double sigmoid(double d) { //Applied to output neurons to map into wanted space.
-			return d;
-		}
-		@Override
-		public double derivative(double a) {
-			double n = (1+Math.abs(a));
-			return 1/(n*n);
-		}
-	};
-	
-	public static AcceptanceCriteria andAcceptanceCriteria(final AcceptanceCriteria ... criterions){
-		return new AcceptanceCriteria(){
-			@Override
-			public boolean isAccepted(int epoch, double mserror, double trainMsError) {
-				boolean accept = true;
-				for(AcceptanceCriteria a : criterions){
-					accept &= a.isAccepted(epoch, mserror, trainMsError);
-				}
-				return accept;
-			}
-		};
-	}
-	
-	public static AcceptanceCriteria orAcceptanceCriteria(final AcceptanceCriteria ... criterions){
-		return new AcceptanceCriteria(){
-			@Override
-			public boolean isAccepted(int epoch, double mserror, double trainMsError) {
-				boolean accept = true;
-				for(AcceptanceCriteria a : criterions){
-					if(a.isAccepted(epoch, mserror, trainMsError)){
-						System.out.println(a.isAccepted(epoch, mserror, trainMsError));
-						return true;
-					}
-				}
-				return accept;
-			}
-		};
-	}
-	
-	public static AcceptanceCriteria maxEpochAcceptanceCriteria(final int limit){
-		return new AcceptanceCriteria(){
-			@Override
-			public boolean isAccepted(int epoch, double mserror, double trainMsError) {
-				boolean retval =epoch >= limit; 
-				return retval;
-			}
-		};
-	}
-	
-	public static AcceptanceCriteria maxRmsAcceptanceCriteria(final double limit){
-		return new AcceptanceCriteria(){
-			@Override
-			public boolean isAccepted(int epoch, double mserror, double trainMsError) {
-				return mserror < limit;
-			}
-		};
-	}
-	
-	public static AcceptanceCriteria plotterAcceptanceCriteria(final String outputFile, final int epochs) throws FileNotFoundException, UnsupportedEncodingException{
-		return new AcceptanceCriteria(){
-			PrintWriter writer = new PrintWriter(outputFile, "UTF-8");
-			@Override
-			public boolean isAccepted(int epoch, double mserror, double trainMsError) {
-				if(epoch >= epochs){
-					writer.close();
-					return true;
-				}
-				String print = epoch+"\t"+trainMsError+"\t"+mserror;
-				writer.println(print.replace(".", ","));
-				//And add old
-				return false;
-			}
-		};
-	}
-	
-	public static AcceptanceCriteria rmsVariationAcceptanceCriteria(final double limit){
-		final LinkedList<Double> errors = new LinkedList<Double>();
-		return new AcceptanceCriteria(){
-			private int errorSize = 30;
-			
-			@Override
-			public boolean isAccepted(int epoch, double mserror, double trainMsError) {
-				errors.addLast(mserror);
-				if(errors.size() == this.errorSize+1) errors.removeFirst();
-				if(Statistics.variance(errors) < limit && errors.size() == this.errorSize) return true;
-				//And add old
-				return false;
-			}
-		};
-	}
-	
-	public static ClassificationAcceptanceCriteria printer(final int limit){
-		return new ClassificationAcceptanceCriteria(){
-			@Override
-			public boolean isAccepted(int epoch, double error, double trainError) {
-				if(epoch%100 == 0) System.out.println(epoch+" of: "+limit+", error: "+error+", train error: "+trainError);
-				if(epoch > limit) return true;
-				return false;
-			}
-		};
-		
+	    int numInputs = 0;
+	    int numOutputs = 0;
+	    List<String> weights = new LinkedList<String>();
+	    TreeMap<Integer,Integer> hiddenLayerSizes = new TreeMap<Integer,Integer>();
+	    String line;
+	    while ((line = br.readLine()) != null) {
+	    	if(line.startsWith("H ")){
+	    		String[] split = line.split(" ");
+	    		hiddenLayerSizes.put(Integer.parseInt(split[1]), Integer.parseInt(split[2]));
+	    	}
+	    	else if(line.startsWith("I ")) numInputs = Integer.parseInt(line.substring(2)+"");
+	    	else if(line.startsWith("O ")) numOutputs = Integer.parseInt(line.substring(2)+"");
+	    	else if(line.startsWith("W ")) weights.add(line.substring(2));
+	    }
+	    br.close();
+	    MultiLayerPerceptron retval = new MultiLayerPerceptron(hiddenLayerSizes.size());
+	    
+	    //Now actually build network
+	    int[] hiddens = new int[hiddenLayerSizes.size()];
+	    for(int i = 0; i < hiddenLayerSizes.size(); i++) hiddens[i] = hiddenLayerSizes.get(i);
+	    retval.build(numInputs, hiddens, numOutputs);
+	    
+	    //Connections are now added. Set the weights up
+	    for(String l : weights){
+	    	String[] split = l.split(",");
+	    	double weight = Double.parseDouble(split[2]);
+	    	retval.setWeight(split[0],split[1], weight);
+	    }
+	    
+		return retval;
 	}
 
 	@Override
-	public Map<Object, Double> calculateProbabilityForClassifications(double[] x) {
+	public double classify(double[] x) {
+		double[] guess = this.classifyMultipleOutputs(x);
+		int maxIndex = 0;
+		double max = -1;
+		for(int i = 0; i < this.outputs.size(); i++){
+			if(guess[i] > max){
+				max = guess[i];
+				maxIndex = i;
+			}
+		}
+		return this.outputIndexToClassMap.get(maxIndex);
+	}
+
+	@Override
+	public Map<Double, Double> probability(double[] x) {
 		// TODO Auto-generated method stub
 		return null;
 	}

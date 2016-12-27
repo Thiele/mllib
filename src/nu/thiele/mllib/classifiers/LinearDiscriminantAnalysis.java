@@ -1,33 +1,30 @@
 package nu.thiele.mllib.classifiers;
 
 import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 
 import Jama.Matrix;
 import nu.thiele.mllib.data.Data.DataEntry;
-import nu.thiele.mllib.exceptions.InvalidArgumentException;
 import nu.thiele.mllib.utils.Utils;
 
 public class LinearDiscriminantAnalysis implements IClassifier{
-	private double[] totalMean;
-	private HashMap<Object,Double> classCounts;
-	private HashMap<Object,double[]> means;
-	private HashMap<Object,Matrix> covariances;
 	private List<DataEntry> data;
+	private double[] totalMean;
+	private HashMap<Double,Double> classCounts;
+	private HashMap<Double,double[]> means;
+	private HashMap<Double,Matrix> covariances;
 	private Matrix inverseWithinGroupCovariation;
 	
-	public LinearDiscriminantAnalysis(List<DataEntry> d) throws InvalidArgumentException{
-		this.setTrainingData(d);
-		this.loadClassifier();
-	}
+	public LinearDiscriminantAnalysis(){}
 	
 	@Override
-	public Object classify(double[] x) {
-		Map<Object,Double> sums = this.calculateProbabilityForClassifications(x);
-		Object bestObject = null;
+	public double classify(double[] x) {
+		Map<Double,Double> sums = this.probability(x);
+		Double bestObject = -1.0;
 		double bestFunction = Double.MIN_VALUE;
-		for(Object o : this.covariances.keySet()){
+		for(Double o : this.covariances.keySet()){
 			if(sums.get(o) > bestFunction){
 				bestFunction = sums.get(o);
 				bestObject = o;
@@ -37,9 +34,13 @@ public class LinearDiscriminantAnalysis implements IClassifier{
 	}
 
 	@Override
-	public void loadClassifier() {
+	public void train(double[][] x, double[] y) {
+		this.data = new LinkedList<DataEntry>();
+		for(int i = 0; i < x.length; i++){
+			data.add(new DataEntry(x[i], y[i]));
+		}
 		//Calculate class counts
-		this.classCounts = new HashMap<Object,Double>();
+		this.classCounts = new HashMap<Double,Double>();
 		for(DataEntry d : this.data){
 			if(this.classCounts.containsKey(d.getY())){
 				this.classCounts.put(d.getY(), this.classCounts.get(d.getY())+1);
@@ -49,7 +50,7 @@ public class LinearDiscriminantAnalysis implements IClassifier{
 		
 		//Calculate means
 		this.totalMean = new double[this.data.get(0).getX().length];
-		this.means = new HashMap<Object,double[]>();
+		this.means = new HashMap<Double,double[]>();
 		for(DataEntry d : this.data){
 			double[] val = this.means.get(d.getY());
 			if(val == null){
@@ -72,7 +73,7 @@ public class LinearDiscriminantAnalysis implements IClassifier{
 		}
 		
 		//Calculate covariances
-		this.covariances = new HashMap<Object,Matrix>();
+		this.covariances = new HashMap<Double,Matrix>();
 		for(DataEntry d : this.data){
 			Matrix cov = this.covariances.get(d.getY());
 			if(cov == null){
@@ -90,7 +91,7 @@ public class LinearDiscriminantAnalysis implements IClassifier{
 			this.covariances.put(d.getY(), cov);
 		}
 		//Now, correct the estimate
-		for(Object o : this.covariances.keySet()){			
+		for(Double o : this.covariances.keySet()){			
 			Matrix m = this.covariances.get(o);
 			m = m.times(1.0/this.classCounts.get(o));
 			this.covariances.put(o, m);
@@ -107,17 +108,10 @@ public class LinearDiscriminantAnalysis implements IClassifier{
 	}
 
 	@Override
-	public void setTrainingData(List<DataEntry> d) throws InvalidArgumentException {
-		if(d == null) throw new InvalidArgumentException("Null argument");
-		if(d.size() == 0) throw new InvalidArgumentException("Trainingset has no data");
-		this.data = d;
-	}
-
-	@Override
-	public Map<Object, Double> calculateProbabilityForClassifications(double[] x) {
-		Map<Object,Double> retval = new HashMap<Object,Double>();
+	public Map<Double, Double> probability(double[] x) {
+		Map<Double,Double> retval = new HashMap<Double,Double>();
 		Matrix xMatrix = new Matrix(new double[][]{x});
-		for(Object o : this.covariances.keySet()){ //Find best fitting discriminant function
+		for(Double o : this.covariances.keySet()){ //Find best fitting discriminant function
 			Matrix meanVector = new Matrix(new double[][]{this.means.get(o)});
 			double a = meanVector.times(this.inverseWithinGroupCovariation).times(xMatrix.transpose()).getArray()[0][0];
 			double b = meanVector.times(0.5).times(this.inverseWithinGroupCovariation).times(meanVector.transpose()).getArray()[0][0];

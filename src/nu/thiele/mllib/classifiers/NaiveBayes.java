@@ -4,43 +4,36 @@ import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+
 import nu.thiele.mllib.data.Data.DataEntry;
-import nu.thiele.mllib.exceptions.InvalidArgumentException;
-import nu.thiele.mllib.kernelestimators.CosineKernelEstimator;
-import nu.thiele.mllib.kernelestimators.EpanechnikovKernelEstimator;
 import nu.thiele.mllib.kernelestimators.GaussianKernelEstimator;
-import nu.thiele.mllib.kernelestimators.HistogramEstimator;
 import nu.thiele.mllib.kernelestimators.KernelEstimator;
-import nu.thiele.mllib.kernelestimators.KernelEstimator.Estimator;
-import nu.thiele.mllib.kernelestimators.NormalDistributionEstimator;
-import nu.thiele.mllib.kernelestimators.TriweightKernelEstimator;
+import nu.thiele.mllib.kernelestimators.KernelEstimatorFactory;
 import nu.thiele.mllib.utils.Statistics;
 import nu.thiele.mllib.utils.Utils;
 
 public class NaiveBayes implements IClassifier {
 	private List<DataEntry> data; 
-	private HashMap<Object, Double> classCount;
-	private HashMap<Object, HashMap<Integer,KernelEstimator>> ke;
-	private Estimator est;
-	public NaiveBayes(List<DataEntry> set) throws Exception{
-		this.init();
-		this.setTrainingData(set);
-		this.loadClassifier();
+	private HashMap<Double, Double> classCount;
+	private HashMap<Double, HashMap<Integer,KernelEstimator>> ke;
+	private KernelEstimatorFactory estFact;
+	public NaiveBayes(){
+		this(null);
 	}
 	
-	public NaiveBayes(List<DataEntry> set, Estimator estimator) throws InvalidArgumentException{
+	public NaiveBayes(KernelEstimatorFactory fact){
+		if(estFact == null) this.estFact = new GaussianKernelEstimator();
+		else this.estFact = fact;
 		this.init();
-		this.est = estimator;
-		this.setTrainingData(set);
-		this.loadClassifier();
 	}
 	
 	private void init(){
-		this.classCount = new HashMap<Object,Double>();
-		this.ke = new HashMap<Object, HashMap<Integer, KernelEstimator>>();
+		this.classCount = new HashMap<Double,Double>();
+		this.ke = new HashMap<Double, HashMap<Integer, KernelEstimator>>();
 	}
 	
 	private void addValue(DataEntry t){
+		this.data.add(t);
 		if(!this.classCount.containsKey(t.getY())) this.classCount.put(t.getY(), 1.0);
 		else this.classCount.put(t.getY(), this.classCount.get(t.getY())+1.0);
 		
@@ -48,29 +41,7 @@ public class NaiveBayes implements IClassifier {
 			if(this.ke.get(t.getY()) == null) this.ke.put(t.getY(), new HashMap<Integer, KernelEstimator> ());
 			KernelEstimator ketemp = this.ke.get(t.getY()).get(i);
 			if(ketemp == null){
-				if(this.est == null) ketemp = new NormalDistributionEstimator();
-				else{
-					switch(this.est){
-					case COSINE:
-						ketemp = new CosineKernelEstimator();
-						break;
-					case EPANECHNIKOV:
-						ketemp = new EpanechnikovKernelEstimator();
-						break;
-					case GAUSSIAN:
-						ketemp = new GaussianKernelEstimator();
-						break;
-					case HISTOGRAM:
-						ketemp = new HistogramEstimator();
-						break;
-					case TRIWEIGHT:
-						ketemp = new TriweightKernelEstimator();
-						break;
-					default:
-						ketemp = new NormalDistributionEstimator();
-						break;
-					}
-				}
+				ketemp = this.estFact.newInstance();
 			}
 			ketemp.addValue(t.getX()[i]);
 			this.ke.get(t.getY()).put(i, ketemp);
@@ -78,11 +49,11 @@ public class NaiveBayes implements IClassifier {
 
 	}
 	
-	public Object classify(double[] x){
-		Map<Object, Double> probs = this.calculateProbabilityForClassifications(x);
+	public double classify(double[] x){
+		Map<Double, Double> probs = this.probability(x);
 		double mProb = Double.MIN_VALUE;
-		Object mClass = null;
-		for(Object c : probs.keySet()){
+		Double mClass = -1.0;
+		for(Double c : probs.keySet()){
 			if(probs.get(c) > mProb){
 				mProb = probs.get(c);
 				mClass = c;
@@ -91,10 +62,10 @@ public class NaiveBayes implements IClassifier {
 		return mClass;
 	}
 	
-	private double probability(double x, Object c, int index){
+	private double probability(double x, double c, int index){
 		List<Double> thisclass = new LinkedList<Double>();
 		for(DataEntry d : this.data){
-			if(d.getY().getClass().equals(c.getClass())) thisclass.add(d.getX()[index]);
+			if(d.getY() == c) thisclass.add(d.getX()[index]);
 		}
 		double p = this.probability(x, thisclass);
 		return p;
@@ -110,30 +81,25 @@ public class NaiveBayes implements IClassifier {
 	}
 
 	@Override
-	public void loadClassifier() {
-		for(DataEntry tse : data){
-			addValue(tse);
+	public void train(double[][] x, double[] y) {
+		this.data = new LinkedList<DataEntry>();
+		for(int i = 0; i < x.length; i++){
+			addValue(new DataEntry(x[i], y[i]));
 		}
 	}
 
 	@Override
-	public void setTrainingData(List<DataEntry> data)
-			throws InvalidArgumentException {
-		this.data = data;
-	}
-
-	@Override
-	public Map<Object, Double> calculateProbabilityForClassifications(double[] x) {
-		Map<Object, Double> probs = new HashMap<Object, Double>();
+	public Map<Double, Double> probability(double[] x) {
+		Map<Double, Double> probs = new HashMap<Double, Double>();
 		for(int i = 0; i < x.length; i++){
-			for(Object c : this.classCount.keySet()){
+			for(Double c : this.classCount.keySet()){
 				double prob = this.probability(x[i], c, i);
 				if(!probs.containsKey(c)) probs.put(c, prob);
 				else probs.put(c, probs.get(c)+prob);
 			}
 		}
 		for(int i = 0; i < x.length; i++){
-			for(Object o : probs.keySet()){
+			for(Double o : probs.keySet()){
 				double estimatedProb = this.ke.get(o).get(i).probability(x[i]);
 				probs.put(o, estimatedProb * probs.get(o));
 			}
