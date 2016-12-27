@@ -35,7 +35,7 @@ public class MultiLayerPerceptron implements IClassifier, IMultiClassifier{
 		x[1] = new double[]{0.0,1.0};
 		x[2] = new double[]{1.0,0.0};
 		x[3] = new double[]{1.0,1.0};
-		double[] y = {7,3,3,1};
+		double[] y = {0,1,1,0};
 
 		mlp.train(x, y, 5000);
 		
